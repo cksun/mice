@@ -427,26 +427,39 @@ mice <- function(data, m = 5, method = vector("character", length = ncol(data)),
         ispredictor <- apply(pred != 0, 2, any)  # SvB 16/3/11
         if (any(ispredictor))
             droplist <- find.collinear(data[, ispredictor, drop = FALSE], ...) else droplist <- NULL
-        if (length(droplist) > 0) {
-            for (k in 1:length(droplist)) {
-                j <- which(varnames %in% droplist[k])
-                didlog <- FALSE
-                if (any(pred[, j] != 0)) {
-                  # remove as predictor
-                  out <- varnames[j]
-                  pred[, j] <- 0
-                  updateLog(out = out, meth = "collinear")
-                  didlog <- TRUE
-                }
-                if (meth[j] != "") {
-                  out <- varnames[j]
-                  pred[j, ] <- 0
-                  if (!didlog)
-                    updateLog(out = out, meth = "collinear")
-                  meth[j] <- ""
-                  vis <- vis[vis != j]
-                  post[j] <- ""
-                }
+
+        if (length(droplist) > 0) { # droplist is not NULL, length > 0
+            res <- cbind(row=match(droplist[, 'row'], dimnames(pred)[[2]]), 
+                         col=match(droplist[, 'col'], dimnames(pred)[[2]]))
+            for (k in 1:nrow(droplist)) {
+              didlog <- FALSE
+              # if predictionMatrix the row covariates is 1, set the col covariates to 0.
+              # if the row covariates is 0, the col covariates is fine to be 1.
+              # if both of them are predictors for some covariates 
+              if (any(pred[, res[k, 'row']] == 1)) { 
+                 # when res[k, 'row'] is a predictor, res[k, 'col'] cannot be. 
+                 pred[pred[, res[k, 'row']] == 1, res[k, 'col']] <- 0
+                 # res[k, 'col'] is not a predictor for res[k, 'row']
+                 pred[res[k, 'row'], res[k, 'col']] <- 0
+                 # res[k, 'row'] is not a predictor for res[k, 'col']
+                 pred[res[k, 'col'], res[k, 'row']] <- 0
+                 updateLog(out = paste0(droplist[k, 'row'], ':', droplist[k, 'col']), meth = "collinear")
+                 didlog <- TRUE
+              } else if (any(pred[, res[k, 'col']] == 1)) {
+                 pred[res[k, 'row'], res[k, 'col']] <- 0
+                 updateLog(out = paste0(droplist[k, 'row'], ':', droplist[k, 'col']), meth = "collinear")
+                 didlog <- TRUE
+              }
+
+               # if res[k, 'row'] have only one predictor res[k, 'col']
+               # if res[k, 'col'] have only one predictor res[k, 'row']
+              for (l in c('row', 'col')) {
+                 if (all(pred[res[k, l], ]==0)) {   
+                    meth[res[k, l]] <- ""
+                    vis <- vis[vis != res[k, l]]
+                    post[res[k, l]] <- ""
+                 }
+              }
             }
         }
 

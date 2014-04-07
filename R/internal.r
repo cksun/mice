@@ -243,6 +243,7 @@ remove.lindep <- function(x, y, ry, eps = 1e-04, maxcor = 0.99, allow.na = FALSE
 ## make list of collinear variables to remove
 find.collinear <- function(x, threshold = 0.999, ...) {
     nvar <- ncol(x)
+    # xr <- x 
     x <- data.matrix(x)
     r <- !is.na(x)
     nr <- apply(r, 2, sum, na.rm = TRUE)
@@ -251,8 +252,16 @@ find.collinear <- function(x, threshold = 0.999, ...) {
     varnames <- dimnames(xo)[[2]]
     z <- suppressWarnings(cor(xo, use = "pairwise.complete.obs"))
     hit <- outer(1:nvar, 1:nvar, "<") & (abs(z) >= threshold)
-    out <- apply(hit, 2, any, na.rm = TRUE)
-    return(varnames[out])
+    res <- which(hit, arr.ind=TRUE)
+    if (length(res) > 0) {
+       res <- data.frame(row=varnames[res[, 'row']], col=varnames[res[, 'col']])
+    } else {
+       res <- NULL 
+    }
+    #res <- data.frame(row=match(varnames[res[, 'row']], colnames(xr)), 
+                      #col=match(varnames[res[, 'col']], colnames(xr)))
+    # out <- apply(hit, 2, any, na.rm = TRUE)
+    return(res)
 }
 
 
